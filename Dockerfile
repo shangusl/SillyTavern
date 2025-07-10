@@ -34,7 +34,7 @@ RUN \
 RUN cat > ./docker-entrypoint-env.sh << 'EOF'
 #!/bin/sh
 
-# 环境变量配置
+# 环境变量配置（注意：这里是shell脚本语法，不是Dockerfile语法）
 ST_LISTEN=${ST_LISTEN:-true}
 ST_PORT=${ST_PORT:-8000}
 ST_HOST=${ST_HOST:-0.0.0.0}
@@ -68,28 +68,15 @@ dataRoot: ./data
 enableCorsProxy: false
 enableUserAccounts: false
 enableDiscreetLogin: false
-cookieSecret: Q6BWIHmF19ilyswzijcBtKCBrJZldnzQSqAvRW43poxFiZsWz4dWWaI6VwMRpU3mwX3E0Lem7kASOpHcGIEREQ==
 disableCsrfProtection: false
 securityOverride: false
 allowKeysExposure: true
 skipContentCheck: false
-whitelistImportDomains:
-  - localhost
-  - cdn.discordapp.com
-  - files.catbox.moe
-  - raw.githubusercontent.com
-requestOverrides: []
 enableServerPlugins: false
 sessionTimeout: 86400
 dnsPreferIPv6: false
 autorunHostname: auto
 autorunPortOverride: -1
-requestProxy:
-  enabled: false
-  url: socks5://username:password@example.com:1080
-  bypass:
-    - localhost
-    - 127.0.0.1
 enableDownloadableTokenizers: true
 rateLimiting:
   preferRealIpHeader: false
