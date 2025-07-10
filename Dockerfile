@@ -4,7 +4,7 @@ FROM node:lts-alpine3.21
 ARG APP_HOME=/home/node/app
 
 # Install system dependencies
-RUN apk add --no-cache gcompat tini git git-lfs
+RUN apk add --no-cache gcompat tini git git-lfs dos2unix
 
 # Create app directory
 WORKDIR ${APP_HOME}
@@ -30,15 +30,83 @@ RUN \
   echo "*** Run Webpack ***" && \
   node "./docker/build-lib.js"
 
+# 创建支持环境变量的启动脚本
+RUN cat > ./docker-entrypoint-env.sh << 'EOF'
+#!/bin/sh
+
+# 环境变量配置
+ST_LISTEN=${ST_LISTEN:-true}
+ST_PORT=${ST_PORT:-8000}
+ST_HOST=${ST_HOST:-0.0.0.0}
+ST_WHITELIST_MODE=${ST_WHITELIST_MODE:-false}
+ST_BASIC_AUTH_MODE=${ST_BASIC_AUTH_MODE:-false}
+ST_USERNAME=${ST_USERNAME:-user}
+ST_PASSWORD=${ST_PASSWORD:-password}
+
+# 创建配置文件
+mkdir -p /home/node/app/config
+
+cat > /home/node/app/config/config.yaml << YAML_EOF
+listen: ${ST_LISTEN}
+port: ${ST_PORT}
+whitelistMode: ${ST_WHITELIST_MODE}
+basicAuthMode: ${ST_BASIC_AUTH_MODE}
+basicAuthUser:
+  username: "${ST_USERNAME}"
+  password: "${ST_PASSWORD}"
+listenAddress:
+  ipv4: ${ST_HOST}
+  ipv6: "::"
+autorun: true
+avoidLocalhost: false
+whitelistDockerHosts: true
+protocol:
+  ipv4: true
+  ipv6: false
+enableForwardedWhitelist: true
+dataRoot: ./data
+enableCorsProxy: false
+enableUserAccounts: false
+enableDiscreetLogin: false
+cookieSecret: Q6BWIHmF19ilyswzijcBtKCBrJZldnzQSqAvRW43poxFiZsWz4dWWaI6VwMRpU3mwX3E0Lem7kASOpHcGIEREQ==
+disableCsrfProtection: false
+securityOverride: false
+allowKeysExposure: true
+skipContentCheck: false
+whitelistImportDomains:
+  - localhost
+  - cdn.discordapp.com
+  - files.catbox.moe
+  - raw.githubusercontent.com
+requestOverrides: []
+enableServerPlugins: false
+sessionTimeout: 86400
+dnsPreferIPv6: false
+autorunHostname: auto
+autorunPortOverride: -1
+requestProxy:
+  enabled: false
+  url: socks5://username:password@example.com:1080
+  bypass:
+    - localhost
+    - 127.0.0.1
+enableDownloadableTokenizers: true
+rateLimiting:
+  preferRealIpHeader: false
+YAML_EOF
+
+# 启动应用
+exec node server.js
+EOF
+
 # Set the entrypoint script
 RUN \
   echo "*** Cleanup ***" && \
-  mv "./docker/docker-entrypoint.sh" "./" && \
   rm -rf "./docker" && \
-  echo "*** Make docker-entrypoint.sh executable ***" && \
-  chmod +x "./docker-entrypoint.sh" && \
+  echo "*** Make docker-entrypoint-env.sh executable ***" && \
+  chmod +x "./docker-entrypoint-env.sh" && \
   echo "*** Convert line endings to Unix format ***" && \
-  dos2unix "./docker-entrypoint.sh"
+  dos2unix "./docker-entrypoint-env.sh"
 
 # Fix extension repos permissions
 RUN git config --global --add safe.directory "*"
@@ -46,4 +114,4 @@ RUN git config --global --add safe.directory "*"
 EXPOSE 8000
 
 # Ensure proper handling of kernel signals
-ENTRYPOINT ["tini", "--", "./docker-entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "./docker-entrypoint-env.sh"]
